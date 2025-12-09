@@ -1,7 +1,6 @@
 import cv2
 import os
 import mahotas
-from tensorflow.keras.models import load_model
 import numpy as np
 from flask import Flask, jsonify, request
 from PIL import Image
@@ -21,8 +20,32 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model_path = os.path.join("model_v2.keras")
 scaler_path = os.path.join("scaler_v2.save")
 
-model = load_model(model_path)
-scaler = joblib.load(scaler_path)
+# Lazy load model - only load when needed
+model = None
+scaler = None
+
+def get_model():
+    global model
+    if model is None:
+        # Set TensorFlow to use less memory
+        import tensorflow as tf
+        tf.config.set_soft_device_placement(True)
+        
+        # Limit TensorFlow memory growth
+        gpus = tf.config.list_physical_devices('GPU')
+        if gpus:
+            for gpu in gpus:
+                tf.config.experimental.set_memory_growth(gpu, True)
+        
+        from tensorflow.keras.models import load_model
+        model = load_model(model_path)
+    return model
+
+def get_scaler():
+    global scaler
+    if scaler is None:
+        scaler = joblib.load(scaler_path)
+    return scaler
 
 # Extract Features
 fixed_size = (300, 300)
@@ -56,24 +79,29 @@ def pre_process(image_file):
     
     img = np.array(img)
     
-    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
-
+    # Resize before converting to save memory
     img = cv2.resize(img, fixed_size)
+    img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     fv_hu = fd_hu_moments(img)
     fv_haralick = fd_haralick(img)
     fv_hist = fd_histogram(img, bins=bins)
 
     global_features = np.hstack([fv_hist, fv_haralick, fv_hu])
-
     global_features = global_features.reshape(1, -1)
 
+    # Get model and scaler lazily
+    scaler = get_scaler()
     featured_scaled = scaler.transform(global_features)
 
-    prediction_probs = model.predict(featured_scaled)
+    model = get_model()
+    prediction_probs = model.predict(featured_scaled, verbose=0)
     prediction_index = np.argmax(prediction_probs)
     prediction_label = class_names[prediction_index]
     confidence = float(prediction_probs[0][prediction_index])
+    
+    # Free memory
+    del img, global_features, featured_scaled, prediction_probs
 
     return prediction_label, confidence
 
@@ -120,4 +148,8 @@ def predict():
     })
 
 if __name__ == '__main__':
+    # Set environment variables to reduce TensorFlow memory usage
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+    os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
+    
     app.run(debug=True, port=5000)

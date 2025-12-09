@@ -9,3 +9,4 @@ google-generativeai
 python-dotenv
 scikit-learn
 tensorflow-cpu
+gunicorn

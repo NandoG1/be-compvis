@@ -20,14 +20,12 @@ genai.configure(api_key=os.getenv("GEMINI_API_KEY"))
 model_path = os.path.join("model_v2.keras")
 scaler_path = os.path.join("scaler_v2.save")
 
-# Lazy load model - only load when needed
 model = None
 scaler = None
 
 def get_model():
     global model
     if model is None:
-        # Set TensorFlow to use less memory
         os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
         os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
         
@@ -40,7 +38,6 @@ def get_model():
         from tensorflow.keras.models import load_model
         model = load_model(model_path)
         
-        # Run a dummy prediction to initialize the model
         import numpy as np
         dummy_input = np.zeros((1, 532))
         model.predict(dummy_input, verbose=0)
@@ -84,7 +81,6 @@ def pre_process(image_file):
     
     img = np.array(img)
     
-    # Resize before converting to save memory
     img = cv2.resize(img, fixed_size)
     img = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
@@ -95,7 +91,6 @@ def pre_process(image_file):
     global_features = np.hstack([fv_hist, fv_haralick, fv_hu])
     global_features = global_features.reshape(1, -1)
 
-    # Get model and scaler lazily
     scaler = get_scaler()
     featured_scaled = scaler.transform(global_features)
 
@@ -105,7 +100,6 @@ def pre_process(image_file):
     prediction_label = class_names[prediction_index]
     confidence = float(prediction_probs[0][prediction_index])
     
-    # Free memory
     del img, global_features, featured_scaled, prediction_probs
 
     return prediction_label, confidence
@@ -156,7 +150,6 @@ def predict():
     })
 
 if __name__ == '__main__':
-    # Set environment variables to reduce TensorFlow memory usage
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
     

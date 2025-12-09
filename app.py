@@ -160,5 +160,5 @@ if __name__ == '__main__':
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
     
-    port = int(os.environ.get('PORT', 5000))
+    port = int(os.environ.get('PORT', 8080))
     app.run(debug=True) 

@@ -1,6 +1,5 @@
 opencv-python-headless
 mahotas
-tensorflow
 numpy
 flask
 Pillow

@@ -1,0 +1,11 @@
+opencv-python
+mahotas
+tensorflow
+numpy
+flask
+Pillow
+joblib
+flask-cors
+google-generativeai
+python-dotenv
+scikit-learn

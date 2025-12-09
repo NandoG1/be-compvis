@@ -28,17 +28,22 @@ def get_model():
     global model
     if model is None:
         # Set TensorFlow to use less memory
-        import tensorflow as tf
-        tf.config.set_soft_device_placement(True)
+        os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+        os.environ['TF_ENABLE_ONEDNN_OPTS'] = '0'
         
-        # Limit TensorFlow memory growth
-        gpus = tf.config.list_physical_devices('GPU')
-        if gpus:
-            for gpu in gpus:
-                tf.config.experimental.set_memory_growth(gpu, True)
+        import tensorflow as tf
+        
+        # Limit memory usage
+        tf.config.threading.set_inter_op_parallelism_threads(1)
+        tf.config.threading.set_intra_op_parallelism_threads(1)
         
         from tensorflow.keras.models import load_model
         model = load_model(model_path)
+        
+        # Run a dummy prediction to initialize the model
+        import numpy as np
+        dummy_input = np.zeros((1, 532))
+        model.predict(dummy_input, verbose=0)
     return model
 
 def get_scaler():
@@ -130,6 +135,9 @@ def ai_gemini(disease_name):
     return data
 
 
+@app.route("/health", methods=['GET'])
+def health():
+    return jsonify({"status": "ok"}), 200
 
 
 @app.route("/predict", methods=['POST'])
@@ -152,4 +160,5 @@ if __name__ == '__main__':
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
     os.environ['TF_FORCE_GPU_ALLOW_GROWTH'] = 'true'
     
-    app.run(debug=True, port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(debug=False, host='0.0.0.0', port=port) 

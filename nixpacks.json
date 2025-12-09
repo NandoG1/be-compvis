@@ -1,0 +1,18 @@
+{
+  "phases": {
+    "setup": {
+      "nixPkgs": ["python39"]
+    },
+    "install": {
+      "cmds": [
+        "pip install --no-cache-dir -r requirements.txt"
+      ]
+    },
+    "build": {
+      "cmds": []
+    }
+  },
+  "start": {
+    "cmd": "gunicorn app:app --bind 0.0.0.0:$PORT --workers 1 --threads 1 --timeout 300 --max-requests 50 --preload --worker-tmp-dir /dev/shm --log-level info"
+  }
+}
